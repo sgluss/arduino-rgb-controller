@@ -1,3 +1,5 @@
+unsigned long startTime = 0;
+
 // Set pins
 int RED_LED_PIN = 3;
 int GREEN_LED_PIN = 10;
@@ -27,7 +29,16 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  // test rotating hue
+
+  // set new color every 50 millis
+  unsigned long currentTime = millis();
+  if (currentTime - startTime > 50) {
+  setNewColor();
+  }
+}
+
+void setNewColor() {
+   // test rotating hue
   hue += 1;
   if (hue > 360) {
     hue = 0;  
@@ -37,10 +48,7 @@ void loop() {
   setRGBFromHSV();
   analogWrite(RED_LED_PIN, redVal);
   analogWrite(GREEN_LED_PIN, greenVal);
-  analogWrite(BLUE_LED_PIN, blueVal);
-
-  // Let's not get crazy now
-  delay(50);
+  analogWrite(BLUE_LED_PIN, blueVal); 
 }
 
 /**
