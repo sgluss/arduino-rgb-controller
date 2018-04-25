@@ -13,6 +13,10 @@ const int ROTARY_SW_PIN = 8;
 const int ROTARY_DT_PIN = 6;
 const int ROTARY_CLK_PIN = 5;
 
+// Set pot pins
+const int SATURATION_POT_PIN = 17;
+const int BRIGHTNESS_POT_PIN = 14;
+
 // radial coordinates for color wheel
 // 0 - 360
 double hue = 0;
@@ -49,6 +53,9 @@ void setup() {
   pinMode(ROTARY_DT_PIN, INPUT);
   pinMode(ROTARY_CLK_PIN, INPUT);
   
+  pinMode(BRIGHTNESS_POT_PIN, INPUT);
+  pinMode(SATURATION_POT_PIN, INPUT);
+
   Serial.begin(9600);
 }
 
@@ -57,6 +64,8 @@ void loop() {
   currentTime = millis();
   
   checkButtonStates();
+
+  checkPotStates();
 
   // set new color every 50 millis
   if (currentTime - colorSetTime > 50) {
@@ -100,6 +109,21 @@ void checkButtonStates() {
     rotaryStateCLK = HIGH; 
     encoderIsTurning = 0;
   }
+}
+
+void checkPotStates() {
+  brightness = (analogRead(BRIGHTNESS_POT_PIN) / 1023.0);
+  // Saturation is reversed
+  saturation = 1.0 - (analogRead(SATURATION_POT_PIN) / 1023.0);
+  //logBrightAndSat();
+}
+
+void logBrightAndSat() {
+  Serial.print("brightness value: ");
+  Serial.print(brightness);
+  Serial.print(" saturation value: ");
+  Serial.print(saturation);
+  Serial.print("\n");
 }
 
 // triggered when encoder has been pressed
