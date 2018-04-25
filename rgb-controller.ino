@@ -1,9 +1,17 @@
-unsigned long startTime = 0;
+// timers used for non-blocking scheduling
+unsigned long colorSetTime = 0;
+unsigned long encoderMoveTime = 0;
+unsigned long currentTime = 0;
 
-// Set pins
-int RED_LED_PIN = 3;
-int GREEN_LED_PIN = 10;
-int BLUE_LED_PIN = 11;
+// Set LED pins
+const int RED_LED_PIN = 3;
+const int GREEN_LED_PIN = 10;
+const int BLUE_LED_PIN = 11;
+
+// Set Rotary Encoder pins
+const int ROTARY_SW_PIN = 8;
+const int ROTARY_DT_PIN = 6;
+const int ROTARY_CLK_PIN = 5;
 
 // radial coordinates for color wheel
 // 0 - 360
@@ -18,30 +26,105 @@ int redVal = 255;
 int greenVal = 255;
 int blueVal = 255;
 
+int rotaryStateSW = HIGH;
+int rotaryStateDT = HIGH;
+int rotaryStateCLK = HIGH;
+
+int rotaryStateSWNew = HIGH;
+int rotaryStateDTNew = HIGH;
+int rotaryStateCLKNew = HIGH;
+
+// stores whether the encoder could be between clicks
+int encoderPossiblyBetween = 0;
+// if the encoder has gone high, but DT or CLK are still high, leave this set
+int encoderIsTurning = 0;
+
 void setup() {
   // put your setup code here, to run once:
   pinMode(RED_LED_PIN, OUTPUT);
   pinMode(GREEN_LED_PIN, OUTPUT);
   pinMode(BLUE_LED_PIN, OUTPUT);
 
+  pinMode(ROTARY_SW_PIN, INPUT);
+  pinMode(ROTARY_DT_PIN, INPUT);
+  pinMode(ROTARY_CLK_PIN, INPUT);
+  
   Serial.begin(9600);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  currentTime = millis();
+  
+  checkButtonStates();
 
   // set new color every 50 millis
-  unsigned long currentTime = millis();
-  if (currentTime - startTime > 50) {
-  setNewColor();
+  if (currentTime - colorSetTime > 50) {
+    colorSetTime = currentTime;
+    setNewColor(1);
   }
 }
 
-void setNewColor() {
-   // test rotating hue
-  hue += 1;
-  if (hue > 360) {
-    hue = 0;  
+void checkButtonStates() {
+  rotaryStateSWNew = digitalRead(ROTARY_SW_PIN);
+  rotaryStateDTNew = digitalRead(ROTARY_DT_PIN);
+  rotaryStateCLKNew = digitalRead(ROTARY_CLK_PIN);
+
+  encoderPossiblyBetween = rotaryStateDTNew == LOW || rotaryStateCLKNew == LOW;
+
+  // pushbutton state machine
+  if (rotaryStateSWNew == LOW && rotaryStateSW == HIGH) {
+    rotaryStateSW = LOW;
+    encoderPress();
+  } else if (rotaryStateSWNew == HIGH && rotaryStateSW == LOW) {
+    // reset state
+    rotaryStateSW = HIGH;
+  } 
+
+  // turning encoder to the left state machine
+  if (rotaryStateDTNew == LOW && encoderIsTurning == 0 && rotaryStateDT == HIGH) {
+    rotaryStateDT = LOW;
+    encoderIsTurning = 1;
+    encoderLeft();
+  } else if (rotaryStateDT == LOW && encoderPossiblyBetween == false){
+    rotaryStateDT = HIGH;
+    encoderIsTurning = 0;
+  }
+
+  // turning encoder to the right state machine
+  if (rotaryStateCLKNew == LOW && encoderIsTurning == 0 && rotaryStateCLK == HIGH) {
+    rotaryStateCLK = LOW;
+    encoderIsTurning = 1;
+    encoderRight();
+  } else if (rotaryStateCLK == LOW && encoderPossiblyBetween == false){
+    rotaryStateCLK = HIGH; 
+    encoderIsTurning = 0;
+  }
+}
+
+// triggered when encoder has been pressed
+void encoderPress() {
+  
+}
+
+// triggered when encoder has been turned left by one click
+void encoderLeft() {
+  setNewColor(-10);
+}
+
+// triggered when encoder has been turned right by one click
+void encoderRight() {
+  setNewColor(10);
+}
+
+// adjust hue by offset
+void setNewColor(int offset) {
+  hue += offset;
+  while (hue > 360) {
+    hue -= 360;  
+  }
+  while (hue < 0) {
+    hue += 360;
   }
 
   // convert from HSV controls to RGB outputs to LED pins
@@ -98,6 +181,10 @@ int setRGBFromHSV() {
     Serial.println("bad hue input to rgb converter");
   }
 
+  //logColorState(c, x, m);
+}
+
+void logColorState(double c, double x, double m) {
   Serial.print("Hue: ");
   Serial.print(hue);
   Serial.print(" red: ");
