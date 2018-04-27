@@ -1,3 +1,6 @@
+#include "limits.h"
+#include <EEPROM.h>
+
 enum class Mode { fixed, rotate, party };
 Mode currentMode = Mode::fixed;
 // angular speed used to change hue or set refresh rate, set by rotary encoder
@@ -5,6 +8,7 @@ int speed = 1;
 int MAX_SPEED = 190;
 
 // timers used for non-blocking scheduling
+unsigned long hueLastSet = ULONG_MAX;
 unsigned long colorSetTime = 0;
 unsigned long encoderPreviousClick = 0;
 unsigned long currentTime = 0;
@@ -30,6 +34,9 @@ double hue = 0;
 double saturation = 0.99;
 // 0 - 1 (brightness control, 0 is min, 1 is max
 double brightness = 1.0;
+
+// EEPROM storage for hue
+int hueAddress = 0;
 
 // 0 - 255
 int redVal = 255;
@@ -64,7 +71,11 @@ void setup() {
 
   Serial.begin(9600);
 
-  // Todo: remember old hue
+  // read hue from EEPROM, check for out of bounds values
+  EEPROM.get(hueAddress, hue);
+  if (hue > 360 || hue < 0 || isnan(hue)) {
+    hue = 0;
+  }
   setNewColor(0);
 }
 
@@ -75,9 +86,18 @@ void loop() {
   checkEncoderState();
 
   checkPotStates();
+  
+  // set hue to memory if it is dirty, and sufficient time has passed (do not hammer EEPROM)
+  if (currentTime - 20000 > hueLastSet && hueLastSet != 0 && currentTime > 20000) {
+    hueLastSet = ULONG_MAX;
+    Serial.print("setting hue in EEPROM\n");
+    EEPROM.put(hueAddress, hue);
+  }
 
-  // set new color every 50 millis
-  if (currentMode != Mode::fixed && currentTime - colorSetTime > 200 / (abs(speed))) {
+  if (currentMode == Mode::fixed) {
+    setNewColor(0);
+  } else if (currentTime - colorSetTime > 200 / (abs(speed))) {
+    // set new color based on speed, max of every 200ms
     colorSetTime = currentTime;
     if (currentMode == Mode::rotate) {
       // rotate in direction set by speed
@@ -166,6 +186,9 @@ void encoderLeft() {
   speed = -1 - (1000 / (now - encoderPreviousClick));
   speed = speed < -(MAX_SPEED) ? -(MAX_SPEED) : speed;
   setNewColor(speed);
+  if (currentMode == Mode::fixed) {
+    hueLastSet = millis();
+  }
   encoderPreviousClick = now;
 }
 
@@ -175,6 +198,9 @@ void encoderRight() {
   speed = 1 + (1000 / (now - encoderPreviousClick));
   speed = speed > MAX_SPEED ? MAX_SPEED : speed;
   setNewColor(speed);
+  if (currentMode == Mode::fixed) {
+    hueLastSet = millis();
+  }
   encoderPreviousClick = now;
 }
 
