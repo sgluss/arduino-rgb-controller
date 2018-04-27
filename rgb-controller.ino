@@ -13,6 +13,10 @@ unsigned long colorSetTime = 0;
 unsigned long encoderPreviousClick = 0;
 unsigned long currentTime = 0;
 
+// benchmarking
+//unsigned long benchmarkTimer = millis();
+//unsigned long loopCounter = 0;
+
 // Set LED pins
 const int RED_LED_PIN = 3;
 const int GREEN_LED_PIN = 10;
@@ -106,6 +110,18 @@ void loop() {
       // choose a random hue value!
       setNewColor(rand() % 360);
     }
+  }
+
+  //runBenchmark();
+}
+
+void runBenchmark() {
+  loopCounter += 1;
+  if (currentTime - benchmarkTimer > 1000) {
+    Serial.print(loopCounter);
+    Serial.print(" loops in last second\n");
+    loopCounter = 0;
+    benchmarkTimer = currentTime;
   }
 }
 
