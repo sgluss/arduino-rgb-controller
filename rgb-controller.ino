@@ -115,15 +115,15 @@ void loop() {
   //runBenchmark();
 }
 
-void runBenchmark() {
-  loopCounter += 1;
-  if (currentTime - benchmarkTimer > 1000) {
-    Serial.print(loopCounter);
-    Serial.print(" loops in last second\n");
-    loopCounter = 0;
-    benchmarkTimer = currentTime;
-  }
-}
+//void runBenchmark() {
+//  loopCounter += 1;
+//  if (currentTime - benchmarkTimer > 1000) {
+//    Serial.print(loopCounter);
+//    Serial.print(" loops in last second\n");
+//    loopCounter = 0;
+//    benchmarkTimer = currentTime;
+//  }
+//}
 
 void checkEncoderState() {
   rotaryStateSWNew = digitalRead(ROTARY_SW_PIN);
