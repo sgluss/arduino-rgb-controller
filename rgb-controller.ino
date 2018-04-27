@@ -1,6 +1,12 @@
+enum class Mode { fixed, rotate, party };
+Mode currentMode = Mode::fixed;
+// angular speed used to change hue or set refresh rate, set by rotary encoder
+int speed = 1;
+int MAX_SPEED = 190;
+
 // timers used for non-blocking scheduling
 unsigned long colorSetTime = 0;
-unsigned long encoderMoveTime = 0;
+unsigned long encoderPreviousClick = 0;
 unsigned long currentTime = 0;
 
 // Set LED pins
@@ -57,24 +63,33 @@ void setup() {
   pinMode(SATURATION_POT_PIN, INPUT);
 
   Serial.begin(9600);
+
+  // Todo: remember old hue
+  setNewColor(0);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   currentTime = millis();
   
-  checkButtonStates();
+  checkEncoderState();
 
   checkPotStates();
 
   // set new color every 50 millis
-  if (currentTime - colorSetTime > 50) {
+  if (currentMode != Mode::fixed && currentTime - colorSetTime > 200 / (abs(speed))) {
     colorSetTime = currentTime;
-    setNewColor(1);
+    if (currentMode == Mode::rotate) {
+      // rotate in direction set by speed
+      setNewColor((speed) / abs(speed));
+    } else if (currentMode == Mode::party) {
+      // choose a random hue value!
+      setNewColor(rand() % 360);
+    }
   }
 }
 
-void checkButtonStates() {
+void checkEncoderState() {
   rotaryStateSWNew = digitalRead(ROTARY_SW_PIN);
   rotaryStateDTNew = digitalRead(ROTARY_DT_PIN);
   rotaryStateCLKNew = digitalRead(ROTARY_CLK_PIN);
@@ -128,17 +143,39 @@ void logBrightAndSat() {
 
 // triggered when encoder has been pressed
 void encoderPress() {
-  
+  // change operating mode
+  switch (currentMode) {
+    case Mode::fixed :
+      Serial.print("mode now rotate\n");
+      currentMode = Mode::rotate;
+      break;
+    case Mode::rotate :
+      Serial.print("mode now party time!\n");
+      currentMode = Mode::party;
+      break;
+    case Mode::party :
+      Serial.print("mode now fixed\n");
+      currentMode = Mode::fixed;
+      break;
+  }
 }
 
 // triggered when encoder has been turned left by one click
 void encoderLeft() {
-  setNewColor(-10);
+  unsigned long now = millis();
+  speed = -1 - (1000 / (now - encoderPreviousClick));
+  speed = speed < -(MAX_SPEED) ? -(MAX_SPEED) : speed;
+  setNewColor(speed);
+  encoderPreviousClick = now;
 }
 
 // triggered when encoder has been turned right by one click
 void encoderRight() {
-  setNewColor(10);
+  unsigned long now = millis();
+  speed = 1 + (1000 / (now - encoderPreviousClick));
+  speed = speed > MAX_SPEED ? MAX_SPEED : speed;
+  setNewColor(speed);
+  encoderPreviousClick = now;
 }
 
 // adjust hue by offset
