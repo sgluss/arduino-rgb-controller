@@ -3,6 +3,7 @@
 
 enum class Mode { fixed, rotate, party };
 Mode currentMode = Mode::fixed;
+
 // angular speed used to change hue or set refresh rate, set by rotary encoder
 int speed = 1;
 int MAX_SPEED = 190;
@@ -41,6 +42,7 @@ double brightness = 1.0;
 
 // EEPROM storage for hue
 int hueAddress = 0;
+double hueToSave = 0;
 
 // 0 - 255
 int redVal = 255;
@@ -94,8 +96,7 @@ void loop() {
   // set hue to memory if it is dirty, and sufficient time has passed (do not hammer EEPROM)
   if (currentTime - 20000 > hueLastSet && hueLastSet != 0 && currentTime > 20000) {
     hueLastSet = ULONG_MAX;
-    Serial.print("setting hue in EEPROM\n");
-    EEPROM.put(hueAddress, hue);
+    EEPROM.put(hueAddress, hueToSave);
   }
 
   if (currentMode == Mode::fixed) {
@@ -192,6 +193,7 @@ void encoderPress() {
     case Mode::party :
       Serial.print("mode now fixed\n");
       currentMode = Mode::fixed;
+      hue = hueToSave;
       break;
   }
 }
@@ -204,6 +206,7 @@ void encoderLeft() {
   setNewColor(speed);
   if (currentMode == Mode::fixed) {
     hueLastSet = millis();
+    hueToSave = hue;
   }
   encoderPreviousClick = now;
 }
@@ -216,6 +219,7 @@ void encoderRight() {
   setNewColor(speed);
   if (currentMode == Mode::fixed) {
     hueLastSet = millis();
+    hueToSave = hue;
   }
   encoderPreviousClick = now;
 }
